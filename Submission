@@ -1,0 +1,146 @@
+CREATE DATABASE testDB; 
+
+CREATE TABLE Item (
+item number not null,
+price number,
+inventory number,
+safety_stock number,
+supplier varchar(255),
+lead_time number,
+Category number
+);
+
+
+Item table contains a unique ID for each item. Other attributes include the price of the item, present inventory levels, required safety stock levels, ID of the Supplier, required Lead time and Category of the item. 
+The Categories are: 
+1 – Fresh_Foods/Perishables - 100
+2 - Commodity - 200
+3 – Durables - 300
+4 – Special transportation requirement - 400 
+Categories are used to match the item with the loc_level at which demand for the item is forecasted. 
+For example, the demand for an item of category durables will be forecasted at District level (Loc_level=300). 
+
+INSERT INTO Item(item, inventory, lead_time, safety_stock, Supplier, Price, category) VALUES
+ (1,10,4,5,1001,5,100),
+(2,25,10,15,1002,5,200),
+(3,50,14,20,1003,12,300),
+(4,60,20,25,1004,15,4000);
+SELECT * FROM  Item;
+
+
+CREATE TABLE Location (
+    loc number NOT NULL,
+    latitude number,
+    Longitude number,
+    Loc_level number, 
+    area_cd number, 
+region_cd number,
+dist_cd number,
+state_cd number,
+delivery_time number);
+
+The Location table is the master table containing all Location related information. Each location is categorised into one Location level and will have the following higher levels of hierarchy attached to it: 
+Location Levels 
+Area- 100
+Region- 200
+District- 300
+State- 400
+Above location levels will be matched with the column category in item to generate forecast. Thus for an item of Category 300 (Durables), the forecast will be done at the District level. 
+
+Forecast : 
+Demand Forecast is generated at the level of item-location units. The item-location units are formed in accordance with the rules for item category and location_level. For example, in case of a perishable items, the item-location units will be formed at the lowest level of location.ie. area to generate the forecast. For a commodity type item, the forecast will be generated at the next location level (here it is considered for a city). The generated forecasts are then shared across the supply chain to retailers, wholesalers and distributors. Sharing of this information ensures better alignment across the supply chain. 
+Fulfillment of the orders will also be done at the level at which demand forecast is done. For example in the case of durables fulfillment will be done from Level 3 Distribution centres. 
+
+Once the forecast is received, the retailer generates a purchase order and sends it to the Wholesaler. 	
+
+INSERT INTO Location (loc number,latitude,Longitude,Loc_level,area_cd,city_cd,dist_cd,state_cd) VALUES
+ (1,2,3,100,101,201,301,401) ,
+ (2,3,4,100,102,201,301,401) ,
+ (3,4,5,200,0, 201,301,401),
+ (4,5,6,200,0,202,301,401), 
+(5,6,7,300,0,0,301,401),
+(6,7,8,300,0,0,301,401),
+(7,8,9,400,0,0,0,401),
+(8,9,10,400,0,0,0,402);
+
+
+
+SELECT   * FROM  Location ;
+
+Sales History 
+Create Table SALES_HISTORY ( 
+Item number, 
+Loc number, 
+Category number,
+Loc_level number,
+Sls_period1 number, 
+Sls_period2 number,
+Sls_period3 number,
+Sls_period4 number,
+Sls_period5 number,
+Sls_period6 number);
+
+Purchase Orders – periodic review
+CREATE TABLE PURCHASE_ORDERS (Item number, Loc number,  
+dmnd_qty number) ;
+
+Purchase Orders are generated according to the category level and loc_level. 
+Columns Item and Loc are populated based on the following condition : A.ITEM, B.LOC from Item A, Loc B 
+Join condition : A.category=B.loc_level;
+
+LOAD DATA INFILE 'c:/tmp/demand_from_ext_sources.csv'
+INTO TABLE Demand_Table
+FIELDS TERMINATED BY ',' ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(title,@expired_date,amount)
+SET expired_date = STR_TO_DATE(@expired_date, '%m/%d/%Y');
+
+Demand_from_ext_sources.csv 
+Table : Demand_EXT
+Format : 
+Item,
+Category,
+Quantity,
+Expected Fulfillment time,
+Loc,
+Loc_level,
+Fulfillment time
+
+Above file gets data from various online and offline sources such as data from Search Engine Analytics, Beacons. 
+
+
+Location_data_mapping
+Table Name : Loc_Datamap
+Loc num,
+Age1 num,
+Age2 num, 
+Age3 num,
+Age4 num,
+Age5 num,
+Income_Gp1 num,
+Income_Gp2 num,
+Income_Gp3 num,
+Income_Gp4 num. 
+
+
+
+
+(expressed in %)
+Age1 0-20 - %
+Age2 20-30 - %
+Age3 30-40 - %
+Age4 40-60 - %
+Age5 Above 60 - %
+
+(expressed in %)
+Income_Gp1 - Rich 
+Income_Gp2 - Upper_Middle_Class
+Income_Gp3 - Lower_Middle_Class
+Income_Gp4 - Poor
+
+For forecasting, 
+Demographic details of each loc is shared : 
+Select B.Age1, B.Income_Gp1 from Loc A, Loc_datamap B where A.LOC=B.LOC; 
+Sales_History Data is shared 
+
